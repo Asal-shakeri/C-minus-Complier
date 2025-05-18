@@ -1,0 +1,15 @@
+lineno	lexeme
+1	break
+2	else
+3	if
+4	int
+5	repeat
+6	return
+7	until
+8	void
+9	a
+10	b
+11	cd
+12	cde
+13	e
+14	main
