@@ -36,12 +36,13 @@ class LL1:
         if error_type.lower() == "missing":
             self.errors.append((error_root[2], f"{error_type} {error_root.name}"))
         elif error_type.lower() == "illegal":
-            if error_root[0] == 'EOF':
-                self.errors.append((error_root[2], f"unexpected {error_root[0]}"))
-            elif error_root[0] in ['NUM', 'ID']:
-                self.errors.append((error_root[2], f"{error_type} {error_root[0]}"))
+            token_type, token_value, line_no = error_root
+            if token_type == 'EOF':
+                self.errors.append((line_no, f"unexpected {token_type}"))
+            elif token_type in ['NUM', 'ID']:
+                self.errors.append((line_no, f"{error_type} {token_type}"))
             else:
-                self.errors.append((error_root[2], f"{error_type} {error_root[1]}"))
+                self.errors.append((line_no, f"{error_type} {token_value}"))
 
     def generate_parse_tree(self):
         self.stack = [self.root]
@@ -113,7 +114,10 @@ class LL1:
 
     @staticmethod
     def get_token_key(token):
-        return (token[1], token[0])[token[0] in ['NUM', 'ID']]
+        token_type, token_value, _ = token
+        if token_type in ['NUM', 'ID']:
+            return token_type
+        return token_value
 
     @staticmethod
     def remove_statement(statement):

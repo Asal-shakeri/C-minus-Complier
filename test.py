@@ -154,9 +154,8 @@ class Scanner:
 # Usage
 if __name__ == "__main__":
     scanner = Scanner('input.txt')
-    scanner.scan()
-    parser=LL1(scanner,init_grammar(),None)
+    grammar = init_grammar()
+    parser = LL1(scanner, grammar, None)
     parser.generate_parse_tree()
-
     parser.export_parse_tree('parse_tree.txt')
     parser.export_syntax_error('syntax_errors.txt')

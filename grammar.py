@@ -121,8 +121,8 @@ def init_non_terminals():
 
 def init_grammar():
     grammar = Grammar(init_non_terminals(), init_terminals())
-    grammar.import_firsts("first.txt")
-    grammar.import_follows("follow.txt")
-    grammar.import_rules("grammar.txt")
-    grammar.import_predict_sets("predict.txt")
+    grammar.import_firsts("Parser/data/first.txt")
+    grammar.import_follows("Parser/data/follow.txt")
+    grammar.import_rules("Parser/data/grammar.txt")
+    grammar.import_predict_sets("Parser/data/predict.txt")
     return grammar
