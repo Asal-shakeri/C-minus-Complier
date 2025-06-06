@@ -7,9 +7,7 @@ lineno	lexeme
 6	return
 7	until
 8	void
-9	a
-10	b
-11	cd
-12	cde
-13	e
-14	main
+9	i
+10	main
+11	output
+12	prod

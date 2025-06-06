@@ -1,5 +1,8 @@
 import re
 
+from grammar import init_grammar
+from parser import LL1
+
 class Scanner:
     def __init__(self, input_file):
         with open(input_file, 'r', encoding='utf-8') as f:
@@ -152,3 +155,8 @@ class Scanner:
 if __name__ == "__main__":
     scanner = Scanner('input.txt')
     scanner.scan()
+    parser=LL1(scanner,init_grammar(),None)
+    parser.generate_parse_tree()
+
+    parser.export_parse_tree('parse_tree.txt')
+    parser.export_syntax_error('syntax_errors.txt')
