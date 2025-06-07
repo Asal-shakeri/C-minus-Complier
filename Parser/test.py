@@ -1,11 +1,17 @@
 import re
+import os
 
 from grammar import init_grammar
 from parser import LL1
 
 class Scanner:
     def __init__(self, input_file):
-        with open(input_file, 'r', encoding='utf-8') as f:
+        # Get the directory of the current script
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        # Construct the full path to the input file
+        input_path = os.path.join(current_dir, input_file)
+        
+        with open(input_path, 'r', encoding='utf-8') as f:
             self.input = f.read()
         self.pos = 0
         self.lineno = 1
@@ -153,9 +159,17 @@ class Scanner:
 
 # Usage
 if __name__ == "__main__":
+    # Get the directory of the current script
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    
+    # Initialize scanner with input file
     scanner = Scanner('input.txt')
+    
+    # Initialize grammar and parser
     grammar = init_grammar()
     parser = LL1(scanner, grammar, None)
+    
+    # Generate parse tree and export results
     parser.generate_parse_tree()
-    parser.export_parse_tree('parse_tree.txt')
-    parser.export_syntax_error('syntax_errors.txt')
+    parser.export_parse_tree(os.path.join(current_dir, 'parse_tree.txt'))
+    parser.export_syntax_error(os.path.join(current_dir, 'syntax_errors.txt'))

@@ -91,6 +91,9 @@ class Grammar:
 
 
 def init_terminals():
+    terminals_str = 'EPSILON ID [NUM]; ; (Params)Compound-stmt int void ,Param ] [ Statement-list} {Declaration-list Expression; break; else ) ( if repeat until return =Expression [Expression]H < == + −'
+    # return [Terminal(x) for x in terminals_str.split(' ')]
+
     return [Terminal('$'), Terminal('ε'), Terminal('ID'), Terminal(';'), Terminal('['), Terminal('NUM'),
             Terminal(']'), Terminal('('), Terminal(')'), Terminal('int'), Terminal('void'), Terminal(','),
             Terminal('{'), Terminal('}'), Terminal('break'), Terminal('if'), Terminal('else'), Terminal('while'),
@@ -99,7 +102,12 @@ def init_terminals():
 
 
 def init_non_terminals():
-    return [NonTerminal('Program'), NonTerminal('Declaration-list'), NonTerminal('Declaration'),
+    non_terminals_str='Program Declaration-list Declaration Declaration-initial Declaration-prime Type-specifier Fun-declaration-prime Var-declaration-prime Params Param-list Param-prime Param Compound-stmt Statement-list Statement Expression-stmt Return-stmt Iteration-stmt Selection-stmt Expression Return-stmt-prime Simple-expression-zegond B Simple-expression-prime H C D G Additive-expression-zegond Additive-expression-prime Relop Additive-expression Term Term-prime Term-zegond Addop Factor Factor-prime Factor-zegond ∗Factor (Expression) NUM Var-prime (Args) [Expression] Arg-list Arg-list-prime ,Expression'
+    # return [NonTerminal(x) for x in non_terminals_str.split(' ')]
+    return [
+            
+        
+            NonTerminal('Program'), NonTerminal('Declaration-list'), NonTerminal('Declaration'),
             NonTerminal('Declaration-initial'), NonTerminal('Declaration-prime'),
             NonTerminal('Var-declaration-prime'),
             NonTerminal('Fun-declaration-prime'), NonTerminal('Type-specifier'), NonTerminal('Params'),
