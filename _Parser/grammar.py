@@ -1,3 +1,5 @@
+import os
+
 class Terminal:
     def __init__(self, name):
         self.name = name
@@ -91,9 +93,6 @@ class Grammar:
 
 
 def init_terminals():
-    terminals_str = 'EPSILON ID [NUM]; ; (Params)Compound-stmt int void ,Param ] [ Statement-list} {Declaration-list Expression; break; else ) ( if repeat until return =Expression [Expression]H < == + −'
-    # return [Terminal(x) for x in terminals_str.split(' ')]
-
     return [Terminal('$'), Terminal('ε'), Terminal('ID'), Terminal(';'), Terminal('['), Terminal('NUM'),
             Terminal(']'), Terminal('('), Terminal(')'), Terminal('int'), Terminal('void'), Terminal(','),
             Terminal('{'), Terminal('}'), Terminal('break'), Terminal('if'), Terminal('else'), Terminal('while'),
@@ -102,12 +101,7 @@ def init_terminals():
 
 
 def init_non_terminals():
-    non_terminals_str='Program Declaration-list Declaration Declaration-initial Declaration-prime Type-specifier Fun-declaration-prime Var-declaration-prime Params Param-list Param-prime Param Compound-stmt Statement-list Statement Expression-stmt Return-stmt Iteration-stmt Selection-stmt Expression Return-stmt-prime Simple-expression-zegond B Simple-expression-prime H C D G Additive-expression-zegond Additive-expression-prime Relop Additive-expression Term Term-prime Term-zegond Addop Factor Factor-prime Factor-zegond ∗Factor (Expression) NUM Var-prime (Args) [Expression] Arg-list Arg-list-prime ,Expression'
-    # return [NonTerminal(x) for x in non_terminals_str.split(' ')]
-    return [
-            
-        
-            NonTerminal('Program'), NonTerminal('Declaration-list'), NonTerminal('Declaration'),
+    return [NonTerminal('Program'), NonTerminal('Declaration-list'), NonTerminal('Declaration'),
             NonTerminal('Declaration-initial'), NonTerminal('Declaration-prime'),
             NonTerminal('Var-declaration-prime'),
             NonTerminal('Fun-declaration-prime'), NonTerminal('Type-specifier'), NonTerminal('Params'),
@@ -129,8 +123,12 @@ def init_non_terminals():
 
 def init_grammar():
     grammar = Grammar(init_non_terminals(), init_terminals())
-    grammar.import_firsts("Parser/data/Firsts.txt")
-    grammar.import_follows("Parser/data/Follows.txt")
-    grammar.import_rules("Parser/data/grammar.txt")
-    grammar.import_predict_sets("Parser/data/Predicts.csv")
+    # Get the directory of the current script
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    data_dir = os.path.join(current_dir, 'data')
+    
+    grammar.import_firsts(os.path.join(data_dir, 'first.txt'))
+    grammar.import_follows(os.path.join(data_dir, 'follow.txt'))
+    grammar.import_rules(os.path.join(data_dir, 'grammar.txt'))
+    grammar.import_predict_sets(os.path.join(data_dir, 'predict.txt'))
     return grammar
