@@ -1,0 +1,53 @@
+intx;voidmain(){inty;y=3;}
+  intx;voidmain(){inty;y=3;}
+    intx;
+      intx
+        int
+          int
+        x
+      ;
+        ;
+          ;
+    voidmain(){inty;y=3;}
+      voidmain(){inty;y=3;}
+        voidmain
+          void
+            void
+          main
+        (){inty;y=3;}
+          (){inty;y=3;}
+            (
+            
+            )
+            {inty;y=3;}
+              {
+              inty;
+                inty;
+                  inty
+                    int
+                      int
+                    y
+                  ;
+                    ;
+                      ;
+                
+              y=3;
+                y=3;
+                  y=3;
+                    y=3
+                      y
+                      =3
+                        =
+                        3
+                          3
+                            3
+                              3
+                                3
+                                  3
+                                
+                              
+                            
+                    ;
+                
+              }
+      
