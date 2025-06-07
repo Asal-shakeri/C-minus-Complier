@@ -4,8 +4,7 @@ from scanner.default_scanner import build_scanner
 from scanner.tokens import Token, TokenType
 from tables import tables
 
-# Arshia Akhavan 97110422
-# Ghazal Shenavar 97101897
+
 
 
 tables.symbol_table.add_symbol(Token(TokenType.ID, "output"))

@@ -9,8 +9,7 @@ from scanner.scanner import Scanner
 from scanner.lang import DFANode, FinalStateNode, Edge
 
 
-# Arshia Akhavan 97110422
-# Ghazal Shenavar 97101897
+
 
 def number_regex(start):
     # implementing number regex
