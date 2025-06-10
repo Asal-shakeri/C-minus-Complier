@@ -178,5 +178,5 @@ Follow these instructions to get a copy of the project up and running on your lo
 
 ## Acknowledgements
 
-  - This project was created by **Asal Shakeri** as a term project for the Compiler Design course.
+  - This project was created by Mohammad Yousefian, Roghaye atayee, Maryam Shakeri as a term project for the Compiler Design course.
   - The structure and logic are based on fundamental compiler construction principles.
