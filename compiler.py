@@ -13,3 +13,8 @@ parser = LL1(build_scanner("input.txt"), init_grammar())
 parser.generate_parse_tree()
 parser.export_parse_tree("parse_tree.txt")
 parser.export_syntax_error("syntax_errors.txt")
+
+
+
+parser.code_gen.execute_from("main")
+parser.export_code("output.txt")
