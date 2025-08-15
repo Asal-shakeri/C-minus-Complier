@@ -2,6 +2,9 @@ from anytree import Node, RenderTree, PreOrderIter
 
 from scanner.tokens import TokenType
 
+from semantic_analyzer.semantic_analyzer import SemanticAnalyzer
+
+
 
 class NoTokenLeftException(Exception):
     pass
@@ -12,6 +15,9 @@ class LL1:
         self.token_generator = token_generator
         self.grammar = grammar
         self.code_gen = code_generator
+        self.semantic_analyzer = SemanticAnalyzer()
+        self.semantic_errors = []
+
         self.p_table = {}
         self.stack = []
         self.errors = []
@@ -52,6 +58,9 @@ class LL1:
             while len(self.stack):
                 statement = self.get_next_valid_statement()
                 statement.token = token
+                if statement.name == "ID":
+                 self.semantic_check("ID_USAGE", statement.token)
+
                 # if statement.name == "#return":
                 #     print("taskali")
                 # code generation
@@ -134,7 +143,11 @@ class LL1:
                 f.write("%s%s\n" % (pre, node.name))
                 
     def export_code(self, path):
-        self.code_gen.export(path)            
+        self.code_gen.export(path) 
+
+    def semantic_check(self, action, token, extra_info=None):
+        self.semantic_analyzer.check(action, token, extra_info)
+           
 
     def reformat_tree(self):
         for node in PreOrderIter(self.root):
