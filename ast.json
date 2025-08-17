@@ -1,0 +1,354 @@
+{
+  "NodeType": "Program",
+  "Value": null,
+  "Children": [
+    {
+      "NodeType": "FunDecl",
+      "Value": null,
+      "Children": [
+        {
+          "NodeType": "TypeSpecifier",
+          "Value": "void",
+          "Children": []
+        },
+        {
+          "NodeType": "ID",
+          "Value": "main",
+          "Children": []
+        },
+        {
+          "NodeType": "Params",
+          "Value": null,
+          "Children": [
+            {
+              "NodeType": "Param",
+              "Value": null,
+              "Children": [
+                {
+                  "NodeType": "TypeSpecifier",
+                  "Value": "void",
+                  "Children": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "NodeType": "CompoundStmt",
+          "Value": null,
+          "Children": [
+            {
+              "NodeType": "VarDecl",
+              "Value": null,
+              "Children": [
+                {
+                  "NodeType": "TypeSpecifier",
+                  "Value": "int",
+                  "Children": []
+                },
+                {
+                  "NodeType": "ID",
+                  "Value": "a",
+                  "Children": []
+                }
+              ]
+            },
+            {
+              "NodeType": "VarDecl",
+              "Value": null,
+              "Children": [
+                {
+                  "NodeType": "TypeSpecifier",
+                  "Value": "int",
+                  "Children": []
+                },
+                {
+                  "NodeType": "ID",
+                  "Value": "c",
+                  "Children": []
+                }
+              ]
+            },
+            {
+              "NodeType": "VarDecl",
+              "Value": null,
+              "Children": [
+                {
+                  "NodeType": "TypeSpecifier",
+                  "Value": "int",
+                  "Children": []
+                },
+                {
+                  "NodeType": "ID",
+                  "Value": "b",
+                  "Children": []
+                }
+              ]
+            },
+            {
+              "NodeType": "VarDecl",
+              "Value": null,
+              "Children": [
+                {
+                  "NodeType": "TypeSpecifier",
+                  "Value": "void",
+                  "Children": []
+                },
+                {
+                  "NodeType": "ID",
+                  "Value": "d",
+                  "Children": []
+                }
+              ]
+            },
+            {
+              "NodeType": "Assign",
+              "Value": null,
+              "Children": [
+                {
+                  "NodeType": "SimpleVar",
+                  "Value": null,
+                  "Children": [
+                    {
+                      "NodeType": "ID",
+                      "Value": "a",
+                      "Children": []
+                    }
+                  ]
+                },
+                {
+                  "NodeType": "AddOp",
+                  "Value": "+",
+                  "Children": [
+                    {
+                      "NodeType": "MulOp",
+                      "Value": "*",
+                      "Children": [
+                        {
+                          "NodeType": "NUM",
+                          "Value": "10",
+                          "Children": []
+                        },
+                        {
+                          "NodeType": "NUM",
+                          "Value": "2",
+                          "Children": []
+                        }
+                      ]
+                    },
+                    {
+                      "NodeType": "MulOp",
+                      "Value": "*",
+                      "Children": [
+                        {
+                          "NodeType": "NUM",
+                          "Value": "3",
+                          "Children": []
+                        },
+                        {
+                          "NodeType": "RelOp",
+                          "Value": "<",
+                          "Children": [
+                            {
+                              "NodeType": "NUM",
+                              "Value": "1",
+                              "Children": []
+                            },
+                            {
+                              "NodeType": "NUM",
+                              "Value": "0",
+                              "Children": []
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "NodeType": "Assign",
+              "Value": null,
+              "Children": [
+                {
+                  "NodeType": "SimpleVar",
+                  "Value": null,
+                  "Children": [
+                    {
+                      "NodeType": "ID",
+                      "Value": "e",
+                      "Children": []
+                    }
+                  ]
+                },
+                {
+                  "NodeType": "MulOp",
+                  "Value": "*",
+                  "Children": [
+                    {
+                      "NodeType": "NUM",
+                      "Value": "3",
+                      "Children": []
+                    },
+                    {
+                      "NodeType": "SimpleVar",
+                      "Value": null,
+                      "Children": [
+                        {
+                          "NodeType": "ID",
+                          "Value": "c",
+                          "Children": []
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "NodeType": "Assign",
+              "Value": null,
+              "Children": [
+                {
+                  "NodeType": "SimpleVar",
+                  "Value": null,
+                  "Children": [
+                    {
+                      "NodeType": "ID",
+                      "Value": "b",
+                      "Children": []
+                    }
+                  ]
+                },
+                {
+                  "NodeType": "AddOp",
+                  "Value": "+",
+                  "Children": [
+                    {
+                      "NodeType": "SimpleVar",
+                      "Value": null,
+                      "Children": [
+                        {
+                          "NodeType": "ID",
+                          "Value": "a",
+                          "Children": []
+                        }
+                      ]
+                    },
+                    {
+                      "NodeType": "NUM",
+                      "Value": "1",
+                      "Children": []
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "NodeType": "Assign",
+              "Value": null,
+              "Children": [
+                {
+                  "NodeType": "SimpleVar",
+                  "Value": null,
+                  "Children": [
+                    {
+                      "NodeType": "ID",
+                      "Value": "c",
+                      "Children": []
+                    }
+                  ]
+                },
+                {
+                  "NodeType": "AddOp",
+                  "Value": "+",
+                  "Children": [
+                    {
+                      "NodeType": "SimpleVar",
+                      "Value": null,
+                      "Children": [
+                        {
+                          "NodeType": "ID",
+                          "Value": "b",
+                          "Children": []
+                        }
+                      ]
+                    },
+                    {
+                      "NodeType": "SimpleVar",
+                      "Value": null,
+                      "Children": [
+                        {
+                          "NodeType": "ID",
+                          "Value": "a",
+                          "Children": []
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "NodeType": "Assign",
+              "Value": null,
+              "Children": [
+                {
+                  "NodeType": "SimpleVar",
+                  "Value": null,
+                  "Children": [
+                    {
+                      "NodeType": "ID",
+                      "Value": "b",
+                      "Children": []
+                    }
+                  ]
+                },
+                {
+                  "NodeType": "SimpleVar",
+                  "Value": null,
+                  "Children": [
+                    {
+                      "NodeType": "ID",
+                      "Value": "f",
+                      "Children": []
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "NodeType": "Call",
+              "Value": null,
+              "Children": [
+                {
+                  "NodeType": "ID",
+                  "Value": "output",
+                  "Children": []
+                },
+                {
+                  "NodeType": "Args",
+                  "Value": null,
+                  "Children": [
+                    {
+                      "NodeType": "SimpleVar",
+                      "Value": null,
+                      "Children": [
+                        {
+                          "NodeType": "ID",
+                          "Value": "b",
+                          "Children": []
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,306 +1,315 @@
-import sys
-
-from code_gen.scope import ScopeManager
-from tables import tables
-from collections import namedtuple
-from code_gen.register import RegisterFile
-from code_gen.assembler import Assembler
-from code_gen.stack import StackManager
-
-MidLangDefaults = namedtuple('MidLangDefaults', 'WORD_SIZE DATA_ADDRESS TEMP_ADDRESS STACK_ADDRESS')
-MID_LANG = MidLangDefaults(4, 500, 900, 1000)
+import json
+import os
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional, Tuple
 
 
+# -----------------------------
+# ---- AST & Deserialisation ---
+# -----------------------------
+class AstNode:
+    def __init__(self, node_type: Optional[str] = None, value: Optional[str] = None, children: Optional[List['AstNode']] = None):
+        self.NodeType: Optional[str] = node_type
+        self.Value: Optional[str] = value
+        self.Children: List[AstNode] = children or []
+
+    @staticmethod
+    def from_dict(d: Dict[str, Any]) -> 'AstNode':
+        node_type = d.get("NodeType")
+        value = d.get("Value")
+        raw_children = d.get("Children", []) or []
+        children = [AstNode.from_dict(c) for c in raw_children]
+        return AstNode(node_type, value, children)
+
+
+# -----------------------------
+# ------ Symbolic Plumbing -----
+# -----------------------------
+@dataclass
+class SymbolInfo:
+    Address: int
+    Type: Optional[str] = None
+
+
+class SymbolTable:
+    def __init__(self) -> None:
+        self._symbols: Dict[str, SymbolInfo] = {}
+
+    def add(self, name: str, address: int, typ: Optional[str]) -> bool:
+        if name in self._symbols:
+            return False
+        self._symbols[name] = SymbolInfo(Address=address, Type=typ)
+        return True
+
+    def lookup(self, name: str) -> Optional[SymbolInfo]:
+        return self._symbols.get(name)
+
+
+# -----------------------------
+# -------- TAC Entity ----------
+# -----------------------------
+@dataclass
+class ThreeAddressCode:
+    Line: int
+    Operation: str
+    Arg1: Optional[str] = None
+    Arg2: Optional[str] = None
+    Result: Optional[str] = None
+
+    def __str__(self) -> str:
+        a1 = self.Arg1 or ""
+        a2 = self.Arg2 or ""
+        res = self.Result or ""
+        return f"{self.Line}\t({self.Operation}, {a1}, {a2}, {res})"
+
+
+# -----------------------------
+# ------- Code Generator -------
+# -----------------------------
 class CodeGen:
+    def __init__(self, root: AstNode) -> None:
+        self._root = root
+        self._symtab = SymbolTable()
+        self._code: List[ThreeAddressCode] = []
+        # Memory model
+        self._next_var_addr: int = 500
+        self._next_tmp_addr: int = 1000
 
-    def __init__(self, mid_lang_defaults=MID_LANG):
-        self.semantic_stack = []
-        self.jail = []
+    # Public API
+    def generate(self) -> List[ThreeAddressCode]:
+        self._gen(self._root)
+        return self._code
 
-        self.MLD = mid_lang_defaults
-        self.assembler = Assembler()
-        self.assembler.data_address = self.MLD.DATA_ADDRESS
-        self.assembler.stack_address = self.MLD.STACK_ADDRESS
-        self.assembler.temp_address = self.MLD.TEMP_ADDRESS
+    # ------------- Core dispatcher -------------
+    def _gen(self, node: Optional[AstNode]) -> Optional[str]:
+        if node is None or node.NodeType is None:
+            return None
 
-        self.rf = RegisterFile(self.get_data_var(), self.get_data_var(), self.get_data_var(), self.get_data_var())
-        self.stack = StackManager(self.assembler.program_block, self.rf, self.MLD)
-        self.scope = ScopeManager(self.assembler, self.stack)
+        nt = node.NodeType
 
-        self.apply_template()
+        # Structural
+        if nt == "Program":
+            for ch in node.Children:
+                self._gen(ch)
+            return None
 
-        self.routines = {"#pnum": self.pnum,
-                         "#pid": self.pid,
-                         "#parr": self.parr,
-                         "#pzero": self.pzero,
-                         "#prv": self.prv,
-                         "#op_push": self.op_push,
-                         "#pop": self.pop,
+        if nt == "FunDecl":
+            # assume void main(void) is our entry point
+            # children: [TypeSpecifier, ID, Params, CompoundStmt]
+            body = self._find_child(node, "CompoundStmt")
+            self._gen(body)
+            return None
 
-                         "#declare": self.declare,
-                         "#declare_id": self.declare_id,
-                         "#declare_arr": self.declare_arr,
-                         "#declare_func": self.declare_func,
+        if nt == "CompoundStmt":
+            for ch in node.Children:
+                self._gen(ch)
+            return None
 
-                         "#arg_init": self.arg_init,
-                         "#arg_finish": self.arg_finish,
-                         "#arg_pass": self.arg_pass,
+        # Declarations
+        if nt in ("VarDecl", "ArrayDecl"):
+            self._gen_decl(node)
+            return None
 
-                         "#assign": self.assign,
-                         "#op_exec": self.op_exec,
-                         "#decide": self.decide,
-                         "#case": self.case,
+        # Statements
+        if nt == "Assign":
+            self._gen_assign(node)
+            return None
 
-                         "#hold": self.hold,
-                         "#label": self.label,
+        if nt == "IfStmt":
+            self._gen_if(node)
+            return None
 
-                         "#prison_break": self.prison_break,
-                         "#prison": self.prison,
-                         "#jump_while": self.jump_while,
+        if nt == "RepeatStmt":
+            self._gen_repeat(node)
+            return None
 
-                         "#output": self.output,
-                         "#call": self.func_call,
-                         "#return": self.func_return,
+        if nt == "ReturnStmt":
+            # not producing code in this simple model
+            if node.Children:
+                self._gen(node.Children[0])
+            return None
 
-                         "#scmod_f": self.scmod_f,
-                         "#scmod_c": self.scmod_c,
-                         "#scmod_s": self.scmod_s,
-                         "#scmod_t": self.scmod_t,
+        if nt == "Call":
+            # specifically handle builtin output(x)
+            callee = node.Children[0].Value if node.Children else None
+            if callee == "output":
+                self._gen_output(node)
+            return None
 
-                         "#sc_start": self.scope_start,
-                         "#sc_stop": self.scope_stop,
+        # Expressions (return address string)
+        if nt == "AddOp" or nt == "MulOp" or nt == "RelOp" or nt == "SubOp":
+            return self._gen_binary(node)
 
-                         "#set_exec": self.set_exec,
-                         }
+        if nt == "SimpleVar":
+            # child[0] is ID
+            name = node.Children[0].Value if node.Children else None
+            if name is None:
+                return None
+            info = self._symtab.lookup(name)
+            return str(info.Address) if info else None
 
-    def call(self, routine, token=None):
-        try:
-            self.routines[routine](token)
-            # uncomment the line below for debugging , gives you a step by step view!
-            # self.export("output.txt")
-        except:
-            sys.stderr.write(f"error during generating code for token {token.lexeme} and routine {routine}\n")
+        if nt == "ArrayVar":
+            return self._gen_array_access(node)
 
-    def pid(self, token):
-        self.semantic_stack.append(self.find_var(token.lexeme).address)
+        if nt == "NUM":
+            return f"#{node.Value}"
 
-    def pnum(self, token):
-        self.semantic_stack.append(f"#{token.lexeme}")
+        # Like ExpressionStmt: just evaluate child
+        if node.Children:
+            return self._gen(node.Children[0])
 
-    def pzero(self, token=None):
-        self.semantic_stack.append(f"#0")
+        return None
 
-    def prv(self, token=None):
-        self.semantic_stack.append(self.rf.rv)
+    # ------------- Helpers -------------
+    def _find_child(self, node: AstNode, kind: str) -> Optional[AstNode]:
+        for ch in node.Children:
+            if ch.NodeType == kind:
+                return ch
+        return None
 
-    def parr(self, token=None):
-        offset = self.semantic_stack.pop()
-        temp = self.get_temp_var()
-        self.assembler.program_block.append(f"(MULT, #{self.MLD.WORD_SIZE}, {offset}, {temp})")
-        self.assembler.program_block.append(f"(ADD, {self.semantic_stack.pop()}, {temp}, {temp})")
-        self.semantic_stack.append(f"@{temp}")
+    def _alloc_var(self) -> int:
+        addr = self._next_var_addr
+        self._next_var_addr += 4
+        return addr
 
-    def pop(self, token=None):
-        self.semantic_stack.pop()
+    def _alloc_tmp(self) -> str:
+        addr = self._next_tmp_addr
+        self._next_tmp_addr += 4
+        return str(addr)
 
-    def declare_arr(self, token=None):
-        self.assembler.program_block.append(f"(ASSIGN, {self.rf.sp}, {self.semantic_stack[-2]}, )")
-        self.stack.reserve(int(self.semantic_stack.pop()[1:]))
+    def _emit(self, op: str, a1: Optional[str] = None, a2: Optional[str] = None, res: Optional[str] = None) -> int:
+        line = len(self._code)
+        self._code.append(ThreeAddressCode(Line=line, Operation=op, Arg1=a1, Arg2=a2, Result=res))
+        return line
 
-    def declare_func(self, token=None):
-        self.assembler.data_pointer = self.assembler.data_address
-        self.assembler.temp_pointer = self.assembler.temp_address
+    def _backpatch(self, line: int, target: str) -> None:
+        instr = self._code[line]
+        instr.Result = target
 
-        # only when zero init is activated
-        self.assembler.program_block[-1] = ""
+    # ------------- Decls -------------
+    def _gen_decl(self, node: AstNode) -> None:
+        # VarDecl: [TypeSpecifier, ID]
+        # ArrayDecl: [TypeSpecifier, ID, NUM]
+        typ = node.Children[0].Value if node.Children else None
+        ident = node.Children[1].Value if len(node.Children) > 1 else None
+        if ident is None:
+            return
+        addr = self._alloc_var()
+        self._symtab.add(ident, addr, typ)
+        # arrays ignored capacity-wise in this simple flat memory model
 
-        id_record = self.find_var(self.assembler.last_id.lexeme)
-        id_record.address = len(self.assembler.program_block)
+    # ------------- Assign -------------
+    def _gen_assign(self, node: AstNode) -> None:
+        # Assign: [Var, Expr]
+        lhs_addr = self._gen(node.Children[0])
+        rhs_addr = self._gen(node.Children[1])
+        self._emit("ASSIGN", rhs_addr, None, lhs_addr)
 
-    def declare_id(self, token):
-        id_record = self.find_var(token.lexeme)
-        id_record.address = self.get_data_var()
-
-        self.assembler.last_id = token
-
-        if self.assembler.arg_dec:
-            self.arg_assign(id_record.address)
+    # ------------- Binary Ops -------------
+    def _gen_binary(self, node: AstNode) -> Optional[str]:
+        op = node.NodeType
+        # Map to TAC mnemonics
+        if op == "AddOp":
+            tac_op = "ADD" if (node.Value == "+" or node.Value is None) else "SUB"
+        elif op == "SubOp":
+            tac_op = "SUB"
+        elif op == "MulOp":
+            tac_op = "MULT"
+        elif op == "RelOp":
+            if node.Value == "==":
+                tac_op = "EQ"
+            elif node.Value == "<":
+                tac_op = "LT"
+            elif node.Value == "<=":
+                tac_op = "LE"
+            else:
+                tac_op = "REL"  # generic fallback
         else:
-            self.assembler.program_block.append(f"(ASSIGN, #0, {id_record.address}, )")
-            pass
+            tac_op = op
 
+        left = self._gen(node.Children[0])
+        right = self._gen(node.Children[1])
+        tmp = self._alloc_tmp()
+        self._emit(tac_op, left, right, tmp)
+        return tmp
+
+    # ------------- If / Repeat -------------
+    def _gen_if(self, node: AstNode) -> None:
+        # IfStmt: [cond, then, else?]
+        cond = self._gen(node.Children[0])
+        jpf_line = self._emit("JPF", cond, None, "PLACEHOLDER")
+        # then
+        self._gen(node.Children[1])
+        if len(node.Children) > 2 and node.Children[2] is not None:
+            jp_line = self._emit("JP", None, None, "PLACEHOLDER")
+            else_start = len(self._code)
+            self._backpatch(jpf_line, str(else_start))
+            self._gen(node.Children[2])
+            end_addr = len(self._code)
+            self._backpatch(jp_line, str(end_addr))
+        else:
+            end_addr = len(self._code)
+            self._backpatch(jpf_line, str(end_addr))
+
+    def _gen_repeat(self, node: AstNode) -> None:
+        # RepeatStmt: [body, condition]
+        loop_start = len(self._code)
+        self._gen(node.Children[0])
+        cond = self._gen(node.Children[1])
+        # jump if false back to start
+        self._emit("JPF", cond, None, str(loop_start))
+
+    # ------------- Arrays & Calls -------------
+    def _gen_array_access(self, node: AstNode) -> Optional[str]:
+        # ArrayVar: [ID, indexExpr]
+        array_id = node.Children[0].Value if node.Children else None
+        info = self._symtab.lookup(array_id) if array_id else None
+        if not info:
+            return None
+        idx = self._gen(node.Children[1])
+        offset = self._alloc_tmp()
+        self._emit("MULT", idx, "#4", offset)
+        final = self._alloc_tmp()
+        self._emit("ADD", f"#{info.Address}", offset, final)
+        return f"@{final}"
+
+    def _gen_output(self, node: AstNode) -> None:
+        # Call: [ID, Args]
+        args = self._find_child(node, "Args")
+        if args and args.Children:
+            arg_addr = self._gen(args.Children[0])
+            self._emit("PRINT", arg_addr, None, None)
+
+
+# -----------------------------
+# ------------- CLI -----------
+# -----------------------------
+class Helper:
     @staticmethod
-    def declare(Token=None):
-        tables.get_symbol_table().set_declaration(True)
-
-    def assign(self, token=None):
-        self.assembler.program_block.append(f"(ASSIGN, {self.semantic_stack.pop()}, {self.semantic_stack[-1]}, )")
-
-    def op_exec(self, token=None):
-        second = self.semantic_stack.pop()
-        operand = self.semantic_stack.pop()
-        first = self.semantic_stack.pop()
-        result = self.get_temp_var()
-        self.assembler.program_block.append(f"({operand}, {first}, {second}, {result})")
-        self.semantic_stack.append(result)
-
-    operands = {'+': 'ADD', '-': 'SUB', '*': 'MULT', '<': 'LT', '==': 'EQ'}
-
-    def op_push(self, token):
-        self.semantic_stack.append(self.operands[token.lexeme])
-
-    def hold(self, token=None):
-        self.label()
-        self.assembler.program_block.append("(new you see me!)")
-
-    def label(self, token=None):
-        self.semantic_stack.append(len(self.assembler.program_block))
-
-    def decide(self, token=None):
-        address = self.semantic_stack.pop()
-        self.assembler.program_block[
-            address] = f"(JPF, {self.semantic_stack.pop()}, {len(self.assembler.program_block)}, )"
-
-    def case(self, token=None):
-        result = self.get_temp_var()
-        self.assembler.program_block.append(f"(EQ, {self.semantic_stack.pop()}, {self.semantic_stack[-1]}, {result})")
-        self.semantic_stack.append(result)
-
-    def jump_while(self, token=None):
-        head1 = self.semantic_stack.pop()
-        head2 = self.semantic_stack.pop()
-        self.assembler.program_block.append(f"(JP, {self.semantic_stack.pop()}, , )")
-        self.semantic_stack.append(head2)
-        self.semantic_stack.append(head1)
-
-    def output(self, token=None):
-        self.assembler.program_block.append(f"(PRINT, {self.semantic_stack.pop()}, , )")
-
-    def get_temp_var(self):
-        self.assembler.temp_address += self.MLD.WORD_SIZE
-        return self.assembler.temp_address - self.MLD.WORD_SIZE
-
-    def get_data_var(self, chunk_size=1):
-        self.assembler.data_address += self.MLD.WORD_SIZE * chunk_size
-        return self.assembler.data_address - self.MLD.WORD_SIZE * chunk_size
-
-    def store(self):
-        # storing data
-        for data in range(self.assembler.data_pointer, self.assembler.data_address, self.MLD.WORD_SIZE):
-            self.stack.push(data)
-        # storing temp
-        for temp in range(self.assembler.temp_pointer, self.assembler.temp_address, self.MLD.WORD_SIZE):
-            self.stack.push(temp)
-        # storing registers
-        self.stack.store_registers()
-
-    def restore(self):
-        # loading registers
-        self.stack.load_registers()
-        # loading temps
-        for temp in range(self.assembler.temp_address, self.assembler.temp_pointer, -self.MLD.WORD_SIZE):
-            self.stack.pop(temp - self.MLD.WORD_SIZE)
-        # loading data
-        for data in range(self.assembler.data_address, self.assembler.data_pointer, -self.MLD.WORD_SIZE):
-            self.stack.pop(data - self.MLD.WORD_SIZE)
-
-    def collect(self):
-        # collect
-        result = self.get_temp_var()
-        self.assembler.program_block.append(f"(ASSIGN, {self.rf.rv}, {result}, )")
-        self.semantic_stack.append(result)
-
-    def push_args(self):
-        # arg pass
-        for arg in range(self.assembler.arg_pointer.pop(), len(self.semantic_stack)):
-            self.stack.push(self.semantic_stack.pop())
-
-    def func_call(self, token=None):
-        self.store()
-        self.push_args()
-        # setting registers
-        self.assembler.program_block.append(f"(ASSIGN, #{len(self.assembler.program_block) + 2}, {self.rf.ra}, )")
-        # call!
-        self.assembler.program_block.append(f"(JP, {self.semantic_stack.pop()}, , )")
-        self.restore()
-        self.collect()
-
-    def func_return(self, token=None):
-        self.assembler.program_block.append(f"(JP, @{self.rf.ra}, , )")
-
-    # argument management
-    def arg_init(self, token=None):
-        self.assembler.arg_dec = True
-
-    def arg_finish(self, token=None):
-        self.assembler.arg_dec = False
-
-    def arg_assign(self, address):
-        self.stack.pop(address)
-
-    def arg_pass(self, token=None):
-        self.assembler.arg_pointer.append(len(self.semantic_stack))
-
-    # scope
-    def scmod_f(self, token=None):
-        self.scope.push_scmod("f")  # function
-
-    def scmod_c(self, token=None):
-        self.scope.push_scmod("c")  # container
-
-    def scmod_s(self, token=None):
-        self.scope.push_scmod("s")  # simple
-
-    def scmod_t(self, token=None):
-        self.scope.push_scmod("t")  # temporary
-
-    def scope_start(self, token=None):
-        tables.get_symbol_table().new_scope()
-        self.scope.new_scope()
-
-    def scope_stop(self, token=None):
-        tables.get_symbol_table().remove_scope()
-        self.scope.del_scope()
-
-    def prison(self, token=None):
-        self.scope.prison()
-
-    def prison_break(self, token=None):
-        self.scope.prison_break()
-
-    @staticmethod
-    def find_var(id):
-        return tables.get_symbol_table().fetch(id)
-
-    def export(self, path):
-        with open(path, "w") as f:
-            for i, l in enumerate(self.assembler.program_block):
-                f.write(f"{i}\t{l}\n")
-
-    def apply_template(self):
-        self.assembler.program_block.append(f"(ASSIGN, #{self.MLD.STACK_ADDRESS}, {self.rf.sp}, )")
-        self.assembler.program_block.append(f"(ASSIGN, #{self.MLD.STACK_ADDRESS}, {self.rf.fp}, )")
-
-        self.assembler.program_block.append(f"(ASSIGN, #9999, {self.rf.ra}, )")
-        self.assembler.program_block.append(f"(ASSIGN, #9999, {self.rf.rv}, )")
-
-        self.assembler.program_block.append(f"(JP, 9, , )")
-        self.stack.pop(self.rf.rv)
-        self.assembler.program_block.append(f"(PRINT, {self.rf.rv}, , )")
-        self.assembler.program_block.append(f"(JP, @{self.rf.ra}, , )")
-        self.get_data_var()
-
-    def set_exec(self, token=None):
-        if not self.assembler.set_exec:
-            self.assembler.set_exec = True
-            func = self.semantic_stack.pop()
-            self.assembler.program_block.pop()
-            self.hold()
-            self.semantic_stack.append(func)
-
-    def execute_from(self, func_name):
+    def deserialize_ast(file_path: str) -> Optional[AstNode]:
         try:
-            id_record = self.find_var(func_name)
-            self.assembler.program_block[self.semantic_stack.pop()] = f"(JP, {id_record.address}, , )"
-        except:
-            sys.stderr.write(f"couldn't set the executable path")
+            with open(file_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            if not data:
+                return None
+            return AstNode.from_dict(data)
+        except FileNotFoundError:
+            return None
+
+
+def _discover_outputs_dir() -> Optional[str]:
+    # Heuristic similar to the C# sample: walk up a few parents and look for "Outputs"
+    here = os.path.abspath(os.path.dirname(__file__))
+    candidates = [here]
+    # up to 6 parents, just in case your repo is nested like a Matryoshka doll
+    cur = here
+    for _ in range(6):
+        cur = os.path.dirname(cur)
+        candidates.append(cur)
+    for base in candidates:
+        out = os.path.join(base, "Outputs")
+        if os.path.isdir(out):
+            return out
+    return None
+
+
